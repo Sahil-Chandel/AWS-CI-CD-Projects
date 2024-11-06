@@ -1,4 +1,4 @@
-name: Workflow  # Add a workflow name for easy identification in GitHub Actions
+name: Workflow
 
 on:
   push:
@@ -33,14 +33,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Add step to check disk space before starting
+      # Add disk space check before build
       - name: Check Disk Space Before Build
         run: df -h
 
-      - name: Clean up unused Docker resources  # Cleans up Docker cache to free up space
+      # Clean up Docker images, containers, and volumes to free up space
+      - name: Clean Up Docker Resources
         run: |
-          docker system prune -f
+          docker container prune -f
+          docker image prune -a -f
           docker volume prune -f
+          docker builder prune -f  # Prune Docker build cache
 
       - name: Install Utilities
         run: |
@@ -65,11 +68,11 @@ jobs:
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
           IMAGE_TAG: latest
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      # Add step to check disk space after Docker actions to monitor usage
+      # Check disk space after Docker actions
       - name: Check Disk Space After Build and Push
         run: df -h
 
